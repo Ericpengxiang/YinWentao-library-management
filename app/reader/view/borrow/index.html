@@ -1,0 +1,138 @@
+{extend name="layout/base" /}
+{block name="title"}我的借阅 - 智慧图书馆{/block}
+{block name="content"}
+<div class="card">
+<div class="card-title">📝 我的借阅</div>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<a href="?tab=current" class="btn {$tab=='current'?'btn-primary':'btn-ghost'} btn-sm">借阅中</a>
+<a href="?tab=returned" class="btn {$tab=='returned'?'btn-primary':'btn-ghost'} btn-sm">已归还</a>
+<a href="?tab=all" class="btn {$tab=='all'?'btn-primary':'btn-ghost'} btn-sm">全部记录</a>
+</div>
+{if count($list) > 0}
+<table class="layui-table">
+<thead><tr><th>书名</th><th>作者</th><th>借阅日期</th><th>应还日期</th><th>实还日期</th><th>状态</th><th>操作</th></tr></thead>
+<tbody>
+{foreach $list as $item}
+<tr>
+<td><strong>{$item.book_title}</strong></td>
+<td>{$item.book_author}</td>
+<td>{$item.borrow_date}</td>
+<td>
+{if $item.status==0}
+{if $item.due_date < $today}
+<span class="badge badge-red overdue-blink">{$item.due_date} 超期</span>
+{elseif strtotime($item.due_date) - time() < 3*86400}
+<span class="badge badge-orange">{$item.due_date}</span>
+{else}
+{$item.due_date}
+{/if}
+{else}
+{$item.due_date}
+{/if}
+</td>
+<td>{$item.return_date ?: '-'}</td>
+<td>
+{if $item.status==0}
+<span class="badge badge-blue">借阅中</span>
+{else}
+<span class="badge badge-gray">已归还</span>
+{/if}
+</td>
+<td>
+{if $item.status==0}
+<button class="btn btn-ghost btn-sm" onclick="applyRenew({$item.id})">申请续借</button>
+{else}
+-
+{/if}
+</td>
+</tr>
+{/foreach}
+</tbody>
+</table>
+{if $totalPages > 1}
+<div style="text-align:center;margin-top:16px">
+{for $p=1 to $totalPages}
+<a href="?tab={$tab}&page={$p}" style="display:inline-block;padding:6px 12px;margin:2px;border-radius:6px;border:1px solid #e2e8f0;text-decoration:none;font-size:13px;{$p==$page?'background:#2563eb;color:#fff;border-color:#2563eb':'color:#64748b'}">{$p}</a>
+{/for}
+</div>
+{/if}
+{else}
+<div style="text-align:center;padding:40px;color:#94a3b8">暂无借阅记录</div>
+{/if}
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+<div class="card">
+<div class="card-title">📋 借阅申请记录</div>
+{if count($applyList) > 0}
+<table class="layui-table">
+<thead><tr><th>书名</th><th>申请日期</th><th>天数</th><th>状态</th><th>备注</th></tr></thead>
+<tbody>
+{foreach $applyList as $a}
+<tr>
+<td>{$a.book_title}</td>
+<td>{$a.apply_date}</td>
+<td>{$a.want_days}天</td>
+<td>
+{if $a.status==0}<span class="badge badge-orange">待审核</span>
+{elseif $a.status==1}<span class="badge badge-green">已批准</span>
+{else}<span class="badge badge-red">已拒绝</span>{/if}
+</td>
+<td class="muted">{$a.admin_remark ?: '-'}</td>
+</tr>
+{/foreach}
+</tbody>
+</table>
+{else}
+<div class="muted" style="text-align:center;padding:20px">暂无借阅申请</div>
+{/if}
+</div>
+
+<div class="card">
+<div class="card-title">🔄 续借申请记录</div>
+{if count($renewList) > 0}
+<table class="layui-table">
+<thead><tr><th>书名</th><th>续借天数</th><th>原还书日</th><th>状态</th><th>备注</th></tr></thead>
+<tbody>
+{foreach $renewList as $r}
+<tr>
+<td>{$r.book_title}</td>
+<td>{$r.renew_days}天</td>
+<td>{$r.old_due_date}</td>
+<td>
+{if $r.status==0}<span class="badge badge-orange">待审核</span>
+{elseif $r.status==1}<span class="badge badge-green">已批准</span>
+{else}<span class="badge badge-red">已拒绝</span>{/if}
+</td>
+<td class="muted">{$r.admin_remark ?: '-'}</td>
+</tr>
+{/foreach}
+</tbody>
+</table>
+{else}
+<div class="muted" style="text-align:center;padding:20px">暂无续借申请</div>
+{/if}
+</div>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['layer'],function(){
+var layer=layui.layer;
+window.applyRenew=function(borrowId){
+layer.prompt({title:'申请续借天数（7-30天）',formType:0,value:'14'},function(val,index){
+var days=parseInt(val)||14;
+if(days<7||days>30){layer.msg('续借天数需在7-30天之间',{icon:2});return;}
+fetch('/reader/borrow/renew',{
+method:'POST',
+headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'borrow_id='+borrowId+'&renew_days='+days
+}).then(r=>r.json()).then(res=>{
+layer.close(index);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:2000},function(){if(res.code===0)location.reload();});
+});
+});
+};
+});
+</script>
+{/block}

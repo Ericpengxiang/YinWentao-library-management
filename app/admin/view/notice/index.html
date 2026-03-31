@@ -1,0 +1,61 @@
+{extend name="layout/base" /}
+{block name="title"}公告管理{/block}
+{block name="content"}
+<div class="card">
+<div class="card-title">📢 公告管理</div>
+<div class="toolbar">
+<button class="btn btn-primary btn-sm" onclick="addNotice()">+ 发布公告</button>
+</div>
+<table id="noticeTable" class="layui-table" lay-filter="noticeTable"></table>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['table','layer','form'],function(){
+var table=layui.table, layer=layui.layer, form=layui.form;
+table.render({
+elem:'#noticeTable',id:'noticeTable',
+url:'/admin/notice/listJson',
+page:true,limit:15,
+cols:[[
+{field:'id',title:'ID',width:60},
+{field:'title',title:'标题'},
+{field:'content',title:'内容',templet:function(d){return '<span title="'+d.content+'">'+d.content.substring(0,40)+'...</span>';}},
+{field:'status',title:'状态',width:80,templet:function(d){return d.status==1?'<span class="badge badge-green">已发布</span>':'<span class="badge badge-gray">草稿</span>';}},
+{field:'created_at',title:'发布时间',width:160},
+{title:'操作',width:150,templet:function(d){
+return '<button class="btn btn-ghost btn-sm" onclick="editNotice('+d.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="delNotice('+d.id+')">删除</button>';
+}}
+]]
+});
+window.addNotice=function(){openForm(0);};
+window.editNotice=function(id){
+fetch('/admin/notice/detail?id='+id).then(r=>r.json()).then(res=>{
+if(res.code===0&&res.data)openForm(id,res.data);
+});
+};
+function openForm(id,data){
+var html='<div style="padding:16px"><div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">标题</label><input id="noticeTitle" type="text" style="width:100%;height:40px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 12px;font-size:14px;outline:none" value="'+(data?data.title||'':'')+'" placeholder="公告标题"></div><div style="margin-bottom:12px"><label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">内容</label><textarea id="noticeContent" style="width:100%;height:120px;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;resize:vertical" placeholder="公告内容">'+(data?data.content||'':'')+'</textarea></div><div><label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px">状态</label><select id="noticeStatus" style="height:36px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 12px;font-size:14px;outline:none;background:#fff"><option value="1" '+(data&&data.status==1?'selected':'')+'>发布</option><option value="0" '+(data&&data.status==0?'selected':'')+'>草稿</option></select></div></div>';
+layer.open({title:id?'编辑公告':'发布公告',type:1,content:html,area:['500px','400px'],btn:['保存','取消'],yes:function(idx){
+var title=document.getElementById('noticeTitle').value.trim();
+var content=document.getElementById('noticeContent').value.trim();
+var status=document.getElementById('noticeStatus').value;
+if(!title||!content){layer.msg('标题和内容不能为空',{icon:2});return;}
+fetch('/admin/notice/save',{
+method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'id='+id+'&title='+encodeURIComponent(title)+'&content='+encodeURIComponent(content)+'&status='+status
+}).then(r=>r.json()).then(res=>{
+layer.close(idx);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:1500},function(){if(res.code===0)table.reload('noticeTable');});
+});
+}});
+}
+window.delNotice=function(id){
+layer.confirm('确定删除该公告？',{btn:['确定','取消']},function(idx){
+fetch('/admin/notice/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+id})
+.then(r=>r.json()).then(res=>{layer.close(idx);layer.msg(res.msg,{icon:1,time:1500},function(){table.reload('noticeTable');});});
+});
+};
+});
+</script>
+{/block}

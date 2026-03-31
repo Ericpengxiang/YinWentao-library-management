@@ -1,0 +1,98 @@
+{extend name="layout/base" /}
+{block name="title"}我的主页 - 智慧图书馆{/block}
+{block name="content"}
+<div class="stat-grid">
+<div class="stat-card"><div class="stat-label">当前借阅</div><div class="stat-num">{$borrowing|count}</div></div>
+<div class="stat-card"><div class="stat-label">超期未还</div><div class="stat-num" style="color:{$overdueCount>0?'#ef4444':'#10b981'}">{$overdueCount}</div></div>
+<div class="stat-card"><div class="stat-label">待审核申请</div><div class="stat-num">{$pendingApply + $pendingRenew}</div></div>
+<div class="stat-card"><div class="stat-label">历史借阅总数</div><div class="stat-num">{$historyTotal}</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+<div>
+<div class="card">
+<div class="card-title">📖 当前借阅中</div>
+{if count($borrowing) > 0}
+<table class="layui-table">
+<thead><tr><th>书名</th><th>作者</th><th>借阅日期</th><th>应还日期</th><th>状态</th><th>操作</th></tr></thead>
+<tbody>
+{foreach $borrowing as $item}
+<tr>
+<td><strong>{$item.book_title}</strong></td>
+<td>{$item.book_author}</td>
+<td>{$item.borrow_date}</td>
+<td>
+{if $item.due_date < $today}
+<span class="badge badge-red overdue-blink">{$item.due_date} 已超期</span>
+{elseif strtotime($item.due_date) - time() < 3*86400}
+<span class="badge badge-orange">{$item.due_date} 即将到期</span>
+{else}
+<span class="badge badge-green">{$item.due_date}</span>
+{/if}
+</td>
+<td><span class="badge badge-blue">借阅中</span></td>
+<td>
+<button class="btn btn-ghost btn-sm" onclick="applyRenew({$item.id})">申请续借</button>
+</td>
+</tr>
+{/foreach}
+</tbody>
+</table>
+{else}
+<div style="text-align:center;padding:40px;color:#94a3b8">暂无借阅中的图书，<a href="/reader/book/index" style="color:#2563eb">去借书</a></div>
+{/if}
+</div>
+</div>
+
+<div>
+<div class="card">
+<div class="card-title">📢 最新公告</div>
+{if count($notices) > 0}
+{foreach $notices as $n}
+<div class="notice-item">
+<div class="notice-title">{$n.title}</div>
+<div class="notice-time">{$n.created_at}</div>
+</div>
+{/foreach}
+{else}
+<div class="muted" style="text-align:center;padding:20px">暂无公告</div>
+{/if}
+</div>
+
+<div class="card">
+<div class="card-title">👤 个人信息</div>
+<div style="font-size:13px;color:#64748b;line-height:2">
+<div>姓名：<strong style="color:#1e293b">{$reader.name}</strong></div>
+<div>借书证号：<strong style="color:#1e293b">{$reader.card_no}</strong></div>
+<div>最大借阅：<strong style="color:#1e293b">{$reader.max_borrow} 本</strong></div>
+<div>联系电话：<strong style="color:#1e293b">{$reader.phone}</strong></div>
+</div>
+<div style="margin-top:12px">
+<a class="btn btn-primary btn-sm" href="/reader/book/index">🔍 搜索借书</a>
+<a class="btn btn-ghost btn-sm" href="/reader/borrow/index" style="margin-left:8px">📋 借阅记录</a>
+</div>
+</div>
+</div>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['layer'],function(){
+var layer=layui.layer;
+window.applyRenew=function(borrowId){
+layer.prompt({title:'申请续借天数（7-30天）',formType:0,value:'14'},function(val,index){
+var days=parseInt(val)||14;
+if(days<7||days>30){layer.msg('续借天数需在7-30天之间',{icon:2});return;}
+fetch('/reader/borrow/renew',{
+method:'POST',
+headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'borrow_id='+borrowId+'&renew_days='+days
+}).then(r=>r.json()).then(res=>{
+layer.close(index);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:2000},function(){if(res.code===0)location.reload();});
+});
+});
+};
+});
+</script>
+{/block}

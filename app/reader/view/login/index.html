@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>读者登录 - 智慧图书馆</title>
+<link rel="stylesheet" href="https://unpkg.com/layui@2.9.6/dist/css/layui.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 50%,#e0e7ff 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-wrap{width:100%;max-width:420px;padding:20px}
+.login-card{background:#fff;border-radius:20px;padding:40px 36px;box-shadow:0 20px 60px rgba(37,99,235,.12);border:1px solid #e0e7ff}
+.login-header{text-align:center;margin-bottom:32px}
+.login-logo{width:64px;height:64px;background:linear-gradient(135deg,#2563eb,#7c3aed);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px}
+.login-title{font-size:22px;font-weight:800;color:#1e293b;margin-bottom:4px}
+.login-sub{font-size:14px;color:#64748b}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+.form-input{width:100%;height:44px;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 14px;font-size:14px;color:#1e293b;transition:all .15s;outline:none}
+.form-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-hint{font-size:12px;color:#94a3b8;margin-top:5px}
+.btn-login{width:100%;height:46px;background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-login:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb);transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,.3)}
+.admin-link{text-align:center;margin-top:20px;font-size:13px;color:#94a3b8}
+.admin-link a{color:#2563eb;text-decoration:none;font-weight:600}
+.admin-link a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="login-wrap">
+<div class="login-card">
+<div class="login-header">
+<div class="login-logo">📚</div>
+<div class="login-title">读者登录</div>
+<div class="login-sub">智慧图书管理系统 · 读者中心</div>
+</div>
+<div class="form-group">
+<label class="form-label">借书证号 / 账号</label>
+<input class="form-input" type="text" id="username" placeholder="请输入借书证号" autocomplete="username">
+<div class="form-hint">默认账号为您的借书证号，初始密码 123456</div>
+</div>
+<div class="form-group">
+<label class="form-label">密码</label>
+<input class="form-input" type="password" id="password" placeholder="请输入密码" autocomplete="current-password">
+</div>
+<button class="btn-login" id="btnLogin">登 录</button>
+<div class="admin-link">管理员？<a href="/admin/login/index">前往管理后台</a></div>
+</div>
+</div>
+<script src="https://unpkg.com/layui@2.9.6/dist/layui.js"></script>
+<script>
+layui.use(['layer'], function(){
+    var layer = layui.layer;
+    function doLogin(){
+        var u = document.getElementById('username').value.trim();
+        var p = document.getElementById('password').value.trim();
+        if(!u||!p){layer.msg('请输入账号和密码',{icon:2});return;}
+        var btn = document.getElementById('btnLogin');
+        btn.disabled = true; btn.textContent = '登录中...';
+        fetch('/reader/login/doLogin',{
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'username='+encodeURIComponent(u)+'&password='+encodeURIComponent(p)
+        }).then(r=>r.json()).then(res=>{
+            if(res.code===0){
+                layer.msg('登录成功',{icon:1,time:800},function(){
+                    window.location.href = res.data.url || '/reader/index/index';
+                });
+            } else {
+                layer.msg(res.msg,{icon:2});
+                btn.disabled=false; btn.textContent='登 录';
+            }
+        }).catch(()=>{layer.msg('网络错误',{icon:2});btn.disabled=false;btn.textContent='登 录';});
+    }
+    document.getElementById('btnLogin').addEventListener('click', doLogin);
+    document.addEventListener('keydown', function(e){if(e.key==='Enter')doLogin();});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{extend name="layout/base" /}
+{block name="title"}图书搜索 - 智慧图书馆{/block}
+{block name="content"}
+<div class="card">
+<div class="card-title">🔍 图书搜索</div>
+<form method="get" action="/reader/book/index" style="display:flex;gap:10px;flex-wrap:wrap">
+<input type="text" name="keyword" value="{$keyword}" placeholder="书名 / 作者 / ISBN" style="flex:1;min-width:200px;height:40px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 14px;font-size:14px;outline:none">
+<select name="category_id" style="height:40px;border:1.5px solid #e2e8f0;border-radius:8px;padding:0 12px;font-size:14px;outline:none;background:#fff">
+<option value="0">全部分类</option>
+{foreach $categories as $cat}
+<option value="{$cat.id}" {$cat.id == $categoryId ? 'selected' : ''}>{$cat.name}</option>
+{/foreach}
+</select>
+<button type="submit" class="btn btn-primary">搜索</button>
+{if $keyword || $categoryId}
+<a href="/reader/book/index" class="btn btn-ghost">清除</a>
+{/if}
+</form>
+<div class="muted" style="margin-top:10px">共找到 <strong style="color:#2563eb">{$total}</strong> 本图书</div>
+</div>
+
+{if count($books) > 0}
+<div class="book-grid">
+{foreach $books as $book}
+<div class="book-card" onclick="showApply({$book.id},'{$book.title|escape}',{$book.stock})">
+<div class="book-cover">📖</div>
+<div class="book-info">
+<div class="book-title" title="{$book.title}">{$book.title}</div>
+<div class="book-author">{$book.author}</div>
+<div class="book-stock">
+{if $book.stock > 0}
+<span class="badge badge-green">可借 {$book.stock} 本</span>
+{else}
+<span class="badge badge-red">暂无库存</span>
+{/if}
+</div>
+</div>
+</div>
+{/foreach}
+</div>
+
+{if $totalPages > 1}
+<div style="text-align:center;margin-top:24px">
+{for $p=1 to $totalPages}
+<a href="?keyword={$keyword}&category_id={$categoryId}&page={$p}" style="display:inline-block;padding:6px 12px;margin:2px;border-radius:6px;border:1px solid #e2e8f0;text-decoration:none;font-size:13px;{$p==$page?'background:#2563eb;color:#fff;border-color:#2563eb':'color:#64748b'}">{$p}</a>
+{/for}
+</div>
+{/if}
+{else}
+<div class="card" style="text-align:center;padding:60px">
+<div style="font-size:48px;margin-bottom:16px">📭</div>
+<div style="color:#64748b;font-size:15px">没有找到相关图书</div>
+</div>
+{/if}
+{/block}
+{block name="script"}
+<script>
+layui.use(['layer'],function(){
+var layer=layui.layer;
+window.showApply=function(bookId,title,stock){
+if(stock<=0){layer.msg('该图书暂无库存',{icon:2});return;}
+layer.confirm('申请借阅《'+title+'》？<br><br>请选择借阅天数：<select id="wantDays" style="margin-top:8px;padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0"><option value="7">7天</option><option value="14" selected>14天</option><option value="21">21天</option><option value="30">30天</option></select>',
+{title:'借阅申请',btn:['提交申请','取消'],btnclass:['layui-btn layui-btn-normal','layui-btn layui-btn-primary layui-btn-radius']},
+function(index){
+var days=document.getElementById('wantDays').value;
+fetch('/reader/book/apply',{
+method:'POST',
+headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'book_id='+bookId+'&want_days='+days
+}).then(r=>r.json()).then(res=>{
+layer.close(index);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:2500});
+});
+});
+};
+});
+</script>
+{/block}

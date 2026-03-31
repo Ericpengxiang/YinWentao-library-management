@@ -1,0 +1,70 @@
+{extend name="layout/base" /}
+{block name="title"}续借申请管理{/block}
+{block name="content"}
+<div class="card">
+<div class="card-title">🔄 续借申请管理</div>
+<div class="toolbar">
+<button class="btn btn-ghost btn-sm" onclick="filterStatus('')">全部</button>
+<button class="btn btn-warning btn-sm" onclick="filterStatus(0)">待审核</button>
+<button class="btn btn-success btn-sm" onclick="filterStatus(1)">已批准</button>
+<button class="btn btn-danger btn-sm" onclick="filterStatus(2)">已拒绝</button>
+</div>
+<table id="renewTable" class="layui-table" lay-filter="renewTable"></table>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['table','layer'],function(){
+var table=layui.table, layer=layui.layer;
+function loadTable(status){
+table.render({
+elem:'#renewTable',id:'renewTable',
+url:'/admin/renewApply/listJson',
+where:{status:status},
+page:true,limit:15,
+cols:[[
+{field:'id',title:'ID',width:60},
+{field:'reader_name',title:'读者姓名',width:100},
+{field:'card_no',title:'借书证号',width:120},
+{field:'book_title',title:'书名'},
+{field:'old_due_date',title:'原还书日期',width:110},
+{field:'renew_days',title:'续借天数',width:80,templet:function(d){return d.renew_days+'天';}},
+{field:'status',title:'状态',width:90,templet:function(d){
+var s={0:'<span class="badge badge-orange">待审核</span>',1:'<span class="badge badge-green">已批准</span>',2:'<span class="badge badge-red">已拒绝</span>'};
+return s[d.status]||'-';
+}},
+{field:'admin_remark',title:'审核备注'},
+{title:'操作',width:160,templet:function(d){
+if(d.status!==0)return '<span class="muted">已处理</span>';
+return '<button class="btn btn-success btn-sm" onclick="doApprove('+d.id+')">批准</button> <button class="btn btn-danger btn-sm" onclick="doReject('+d.id+')">拒绝</button>';
+}}
+]]
+});
+}
+window.filterStatus=function(s){loadTable(s);};
+loadTable('');
+window.doApprove=function(id){
+layer.prompt({title:'批准续借（可填写备注）',formType:2,value:''},function(val,index){
+fetch('/admin/renewApply/approve',{
+method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'id='+id+'&remark='+encodeURIComponent(val)
+}).then(r=>r.json()).then(res=>{
+layer.close(index);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:2500},function(){if(res.code===0)table.reload('renewTable');});
+});
+});
+};
+window.doReject=function(id){
+layer.prompt({title:'拒绝原因',formType:2,value:''},function(val,index){
+fetch('/admin/renewApply/reject',{
+method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'id='+id+'&remark='+encodeURIComponent(val)
+}).then(r=>r.json()).then(res=>{
+layer.close(index);
+layer.msg(res.msg,{icon:res.code===0?1:2,time:2000},function(){if(res.code===0)table.reload('renewTable');});
+});
+});
+};
+});
+</script>
+{/block}

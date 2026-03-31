@@ -96,9 +96,9 @@
 {block name="script"}
 <script>
 (function(){
-    var pieRaw = {:$pieJson|raw};
-    var labels = {:$trendLabels|raw};
-    var values = {:$trendValues|raw};
+    var pieRaw = {$pieJson|raw};
+    var labels = {$trendLabels|raw};
+    var values = {$trendValues|raw};
 
     var pie = echarts.init(document.getElementById('chart-pie'));
     pie.setOption({
