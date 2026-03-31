@@ -1,0 +1,83 @@
+{extend name="layout/base" /}
+{block name="title"}读者管理 - 智慧图书管理系统{/block}
+{block name="content"}
+<div class="card">
+    <div class="toolbar">
+        <form class="layui-form layui-form-pane" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <div class="layui-form-item" style="margin:0;">
+                <div class="layui-input-inline" style="width:200px;">
+                    <input type="text" id="kw" placeholder="姓名 / 证号 / 手机" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item" style="margin:0;">
+                <div class="layui-input-inline" style="width:140px;">
+                    <select id="st">
+                        <option value="">全部状态</option>
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
+                    </select>
+                </div>
+            </div>
+            <button type="button" class="layui-btn btn-primary" id="btn-search">搜索</button>
+            <a href="/admin/reader/add" class="layui-btn btn-success">添加读者</a>
+        </form>
+    </div>
+    <table id="tbl-reader" lay-filter="tbl-reader"></table>
+</div>
+
+<script type="text/html" id="bar-reader">
+    <a class="layui-btn layui-btn-xs btn-ghost" lay-event="toggle">{{# if(d.status==1){ }}禁用{{# } else { }}启用{{# } }}</a>
+</script>
+{/block}
+{block name="script"}
+<script>
+layui.use(['table','form','layer'], function(){
+    var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.$;
+    form.render();
+
+    table.render({
+        elem: '#tbl-reader',
+        id: 'tbl-reader',
+        url: '/admin/reader/listJson',
+        page: true,
+        limit: 12,
+        cols: [[
+            {field:'card_no', title:'借书证号', width:120},
+            {field:'name', title:'姓名', width:100},
+            {field:'gender', title:'性别', width:70, templet: function(d){ return d.gender==1?'男':'女'; }},
+            {field:'phone', title:'手机', width:120},
+            {field:'class_name', title:'班级', minWidth:140},
+            {field:'current_borrow', title:'当前借阅', width:100},
+            {field:'borrow_count', title:'累计借阅', width:100},
+            {field:'max_borrow', title:'上限', width:70},
+            {field:'status', title:'状态', width:90, templet: function(d){
+                return d.status==1 ? '<span class="badge badge-green">启用</span>' : '<span class="badge badge-red">禁用</span>';
+            }},
+            {title:'操作', width:120, align:'center', toolbar:'#bar-reader', fixed:'right'}
+        ]],
+        where: { keyword:'', status:'' },
+        parseData: function(res){
+            return { code: res.code, msg: res.msg, count: res.count, data: res.data };
+        },
+        response: { statusCode: 0 },
+        skin: 'line'
+    });
+
+    $('#btn-search').on('click', function(){
+        layui.table.reload('tbl-reader', {
+            page: { curr: 1 },
+            where: { keyword: $('#kw').val(), status: $('#st').val() }
+        });
+    });
+
+    table.on('tool(tbl-reader)', function(obj){
+        if(obj.event === 'toggle'){
+            $.post('/admin/reader/toggleStatus', {id: obj.data.id}, function(res){
+                if(res.code===0){ layer.msg('已更新', {icon:1}); layui.table.reload('tbl-reader'); }
+                else { layer.msg(res.msg, {icon:2}); }
+            }, 'json');
+        }
+    });
+});
+</script>
+{/block}

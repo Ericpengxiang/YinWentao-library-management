@@ -1,0 +1,159 @@
+{extend name="layout/base" /}
+{block name="title"}统计首页 - 智慧图书管理系统{/block}
+{block name="content"}
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">图书总数</div>
+        <div class="stat-num">{$bookTotal|htmlspecialchars}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">读者总数</div>
+        <div class="stat-num">{$readerTotal|htmlspecialchars}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">借阅中</div>
+        <div class="stat-num">{$borrowing|htmlspecialchars}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">超期未还</div>
+        <div class="stat-num" style="color:#ffb4b4;">{$overdue|htmlspecialchars}</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+    <div class="card" style="margin-bottom:0;">
+        <div class="card-title">各分类图书占比</div>
+        <div id="chart-pie" style="height:320px;"></div>
+    </div>
+    <div class="card" style="margin-bottom:0;">
+        <div class="card-title">近 7 日借阅趋势</div>
+        <div id="chart-line" style="height:320px;"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">最近借阅记录</div>
+    <table class="layui-table" lay-skin="line">
+        <thead>
+        <tr>
+            <th>图书</th>
+            <th>读者</th>
+            <th>借阅日</th>
+            <th>应还日</th>
+            <th>状态</th>
+        </tr>
+        </thead>
+        <tbody>
+        {volist name="recentBorrows" id="rb"}
+        <tr>
+            <td>{$rb.book.title|default='-'|htmlspecialchars}</td>
+            <td>{$rb.reader.name|default='-'|htmlspecialchars}</td>
+            <td>{$rb.borrow_date|htmlspecialchars}</td>
+            <td>{$rb.due_date|htmlspecialchars}</td>
+            <td>
+                {if $rb.status == 1}
+                <span class="badge badge-green">已归还</span>
+                {else/}
+                <span class="badge badge-orange">借阅中</span>
+                {/if}
+            </td>
+        </tr>
+        {/volist}
+        {empty name="recentBorrows"}
+        <tr><td colspan="5" class="muted">暂无记录</td></tr>
+        {/empty}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-title">3 天内即将到期</div>
+    <table class="layui-table" lay-skin="line">
+        <thead>
+        <tr>
+            <th>图书</th>
+            <th>读者</th>
+            <th>证号</th>
+            <th>应还日</th>
+        </tr>
+        </thead>
+        <tbody>
+        {volist name="dueSoon" id="ds"}
+        <tr>
+            <td>{$ds.book.title|default='-'|htmlspecialchars}</td>
+            <td>{$ds.reader.name|default='-'|htmlspecialchars}</td>
+            <td>{$ds.reader.card_no|htmlspecialchars}</td>
+            <td><span class="badge badge-blue">{$ds.due_date|htmlspecialchars}</span></td>
+        </tr>
+        {/volist}
+        {empty name="dueSoon"}
+        <tr><td colspan="4" class="muted">暂无即将到期记录</td></tr>
+        {/empty}
+        </tbody>
+    </table>
+</div>
+{/block}
+{block name="script"}
+<script>
+(function(){
+    var pieRaw = {:$pieJson|raw};
+    var labels = {:$trendLabels|raw};
+    var values = {:$trendValues|raw};
+
+    var pie = echarts.init(document.getElementById('chart-pie'));
+    pie.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'item' },
+        legend: { bottom: 0, textStyle: { color: '#c4b8a8' } },
+        series: [{
+            type: 'pie',
+            radius: ['40%', '68%'],
+            itemStyle: {
+                borderRadius: 8,
+                borderColor: '#221a0c',
+                borderWidth: 2
+            },
+            label: { color: '#e8dcc8' },
+            data: pieRaw.length ? pieRaw : [{ name: '暂无', value: 1 }],
+            color: ['#ff7a1a','#ffb347','#ff9f43','#ffa94d','#ffc078','#ffd43b','#fab005','#fd7e14']
+        }]
+    });
+
+    var line = echarts.init(document.getElementById('chart-line'));
+    line.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        grid: { left: 40, right: 20, top: 30, bottom: 30 },
+        xAxis: {
+            type: 'category',
+            data: labels,
+            axisLine: { lineStyle: { color: '#5c4d3a' } },
+            axisLabel: { color: '#a89880' }
+        },
+        yAxis: {
+            type: 'value',
+            splitLine: { lineStyle: { color: 'rgba(255,150,50,0.12)' } },
+            axisLabel: { color: '#a89880' }
+        },
+        series: [{
+            type: 'line',
+            smooth: true,
+            data: values,
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(255, 122, 26, 0.45)' },
+                    { offset: 1, color: 'rgba(255, 122, 26, 0.02)' }
+                ])
+            },
+            lineStyle: { width: 3, color: '#ff7a1a' },
+            itemStyle: { color: '#ffb347' }
+        }]
+    });
+
+    window.addEventListener('resize', function(){
+        pie.resize();
+        line.resize();
+    });
+})();
+</script>
+{/block}

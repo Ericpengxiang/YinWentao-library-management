@@ -1,0 +1,242 @@
+{extend name="layout/base" /}
+{block name="title"}借阅管理 - 智慧图书管理系统{/block}
+{block name="content"}
+<div class="card">
+    <div class="toolbar">
+        <div class="layui-input-inline" style="width:220px;">
+            <input type="text" id="kw" placeholder="书名 / ISBN / 读者 / 证号" class="layui-input">
+        </div>
+        <button type="button" class="layui-btn btn-primary" id="btn-search">搜索</button>
+        <button type="button" class="layui-btn btn-success" id="btn-borrow-open">登记借书</button>
+    </div>
+
+    <div class="layui-tab layui-tab-brief" lay-filter="tab-borrow">
+        <ul class="layui-tab-title">
+            <li class="layui-this" lay-id="all">全部</li>
+            <li lay-id="borrowing">借阅中</li>
+            <li lay-id="overdue">已超期</li>
+            <li lay-id="returned">已归还</li>
+        </ul>
+        <div class="layui-tab-content" style="padding:16px 0 0;">
+            <table id="tbl-borrow" lay-filter="tbl-borrow"></table>
+        </div>
+    </div>
+</div>
+
+<script type="text/html" id="col-status">
+{{# if(d.status==1){ }}
+    <span class="badge badge-green">已归还</span>
+{{# } else if(d.is_overdue==1){ }}
+    <span class="badge badge-red overdue-blink">超期未还</span>
+{{# } else { }}
+    <span class="badge badge-orange">借阅中</span>
+{{# } }}
+</script>
+
+<script type="text/html" id="bar-borrow">
+{{# if(d.status==0){ }}
+<a class="layui-btn layui-btn-xs btn-success" lay-event="ret">还书</a>
+{{# } else { }}
+<span class="muted">—</span>
+{{# } }}
+</script>
+
+<div id="dlg-borrow" style="display:none;padding:16px 16px 0;">
+    <form class="layui-form" lay-filter="dlg-form">
+        <div class="layui-form-item">
+            <label class="layui-form-label">图书</label>
+            <div class="layui-input-block">
+                <input type="hidden" name="book_id" id="f-book-id">
+                <input type="text" id="f-book-q" placeholder="输入书名 / ISBN / 作者 搜索" autocomplete="off" class="layui-input">
+                <div id="book-pick" style="margin-top:8px;max-height:160px;overflow:auto;border:1px solid rgba(255,150,50,0.2);border-radius:8px;display:none;"></div>
+                <div id="book-sel" class="muted" style="margin-top:8px;"></div>
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">读者</label>
+            <div class="layui-input-block">
+                <input type="hidden" name="reader_id" id="f-reader-id">
+                <input type="text" id="f-reader-q" placeholder="姓名 / 证号 / 手机" autocomplete="off" class="layui-input">
+                <div id="reader-pick" style="margin-top:8px;max-height:160px;overflow:auto;border:1px solid rgba(255,150,50,0.2);border-radius:8px;display:none;"></div>
+                <div id="reader-sel" class="muted" style="margin-top:8px;"></div>
+            </div>
+        </div>
+        <div class="layui-form-item" style="margin-bottom:0;">
+            <div class="layui-input-block">
+                <button type="button" class="layui-btn btn-primary" id="btn-do-borrow">确认借书</button>
+            </div>
+        </div>
+    </form>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['table','element','layer'], function(){
+    var table = layui.table, element = layui.element, layer = layui.layer, $ = layui.$;
+    function esc(s){
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+        });
+    }
+
+    var currentTab = 'all';
+
+    function renderTable(){
+        table.render({
+            elem: '#tbl-borrow',
+            id: 'tbl-borrow',
+            url: '/admin/borrow/listJson',
+            page: true,
+            limit: 10,
+            cols: [[
+                {field:'id', title:'ID', width:70},
+                {field:'book_title', title:'图书', minWidth:160},
+                {field:'isbn', title:'ISBN', width:130},
+                {field:'reader_name', title:'读者', width:90},
+                {field:'card_no', title:'证号', width:110},
+                {field:'borrow_date', title:'借阅日', width:110},
+                {field:'due_date', title:'应还日', width:110},
+                {field:'return_date', title:'归还日', width:110, templet: function(d){ return d.return_date || '-'; }},
+                {field:'status', title:'状态', width:120, templet:'#col-status'},
+                {title:'操作', width:100, align:'center', toolbar:'#bar-borrow', fixed:'right'}
+            ]],
+            where: { tab: currentTab, keyword: $('#kw').val() },
+            parseData: function(res){
+                return { code: res.code, msg: res.msg, count: res.count, data: res.data };
+            },
+            response: { statusCode: 0 },
+            skin: 'line'
+        });
+    }
+    renderTable();
+
+    element.on('tab(tab-borrow)', function(data){
+        var layid = $(this).attr('lay-id');
+        currentTab = layid || 'all';
+        layui.table.reload('tbl-borrow', {
+            page: { curr: 1 },
+            where: { tab: currentTab, keyword: $('#kw').val() }
+        });
+    });
+
+    $('#btn-search').on('click', function(){
+        layui.table.reload('tbl-borrow', {
+            page: { curr: 1 },
+            where: { tab: currentTab, keyword: $('#kw').val() }
+        });
+    });
+
+    table.on('tool(tbl-borrow)', function(obj){
+        if(obj.event === 'ret'){
+            layer.confirm('确认办理还书？', function(ix){
+                layer.close(ix);
+                var load = layer.load(2);
+                $.post('/admin/borrow/returnBook', {id: obj.data.id}, function(res){
+                    layer.close(load);
+                    if(res.code===0){ layer.msg('还书成功', {icon:1}); layui.table.reload('tbl-borrow'); }
+                    else { layer.msg(res.msg, {icon:2}); }
+                }, 'json');
+            });
+        }
+    });
+
+    var bookTimer, readerTimer;
+    function debounce(fn, ms){
+        var t;
+        return function(){
+            var ctx = this, args = arguments;
+            clearTimeout(t);
+            t = setTimeout(function(){ fn.apply(ctx, args); }, ms);
+        };
+    }
+
+    var dlgIndex;
+    $('#btn-borrow-open').on('click', function(){
+        $('#f-book-id').val('');
+        $('#f-reader-id').val('');
+        $('#f-book-q').val('');
+        $('#f-reader-q').val('');
+        $('#book-pick').hide().empty();
+        $('#reader-pick').hide().empty();
+        $('#book-sel').text('');
+        $('#reader-sel').text('');
+
+        dlgIndex = layer.open({
+            type: 1,
+            title: '登记借书',
+            area: ['520px','auto'],
+            content: $('#dlg-borrow'),
+            end: function(){
+                $('#dlg-borrow').appendTo('body').hide();
+            }
+        });
+    });
+
+    var searchBooks = debounce(function(){
+        var q = $('#f-book-q').val();
+        if(!q){ $('#book-pick').hide().empty(); return; }
+        $.get('/admin/borrow/searchBooks', {q:q}, function(res){
+            if(res.code!==0) return;
+            var h = '';
+            res.data.forEach(function(row){
+                h += '<div class="pick-row" data-id="'+row.id+'" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid rgba(255,150,50,0.08);">'
+                    + '<div style="font-weight:600;">'+esc(row.title)+'</div>'
+                    + '<div class="muted" style="font-size:12px;">ISBN '+esc(row.isbn)+' · 可借 '+row.available+'</div></div>';
+            });
+            $('#book-pick').html(h||'<div class="muted" style="padding:10px;">无结果</div>').show();
+        }, 'json');
+    }, 350);
+
+    var searchReaders = debounce(function(){
+        var q = $('#f-reader-q').val();
+        if(!q){ $('#reader-pick').hide().empty(); return; }
+        $.get('/admin/borrow/searchReaders', {q:q}, function(res){
+            if(res.code!==0) return;
+            var h = '';
+            res.data.forEach(function(row){
+                h += '<div class="pick-row" data-id="'+row.id+'" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid rgba(255,150,50,0.08);">'
+                    + '<div style="font-weight:600;">'+esc(row.name)+' <span class="muted">'+esc(row.card_no)+'</span></div>'
+                    + '<div class="muted" style="font-size:12px;">在借 '+row.borrow_count+' / 上限 '+row.max_borrow+'</div></div>';
+            });
+            $('#reader-pick').html(h||'<div class="muted" style="padding:10px;">无结果</div>').show();
+        }, 'json');
+    }, 350);
+
+    $(document).on('input', '#f-book-q', searchBooks);
+    $(document).on('input', '#f-reader-q', searchReaders);
+
+    $(document).on('click', '#book-pick .pick-row', function(){
+        var id = $(this).data('id');
+        $('#f-book-id').val(id);
+        $('#book-sel').text('已选图书 ID: '+id);
+        $('#book-pick').hide();
+    });
+    $(document).on('click', '#reader-pick .pick-row', function(){
+        var id = $(this).data('id');
+        $('#f-reader-id').val(id);
+        $('#reader-sel').text('已选读者 ID: '+id);
+        $('#reader-pick').hide();
+    });
+
+    $(document).on('click', '#btn-do-borrow', function(){
+        var bid = $('#f-book-id').val();
+        var rid = $('#f-reader-id').val();
+        if(!bid || !rid){
+            layer.msg('请选择图书和读者', {icon:0});
+            return;
+        }
+        var load = layer.load(2);
+        $.post('/admin/borrow/borrowBook', {book_id:bid, reader_id:rid}, function(res){
+            layer.close(load);
+            if(res.code===0){
+                layer.msg('借书成功', {icon:1});
+                layer.close(dlgIndex);
+                layui.table.reload('tbl-borrow');
+            } else {
+                layer.msg(res.msg, {icon:2});
+            }
+        }, 'json');
+    });
+});
+</script>
+{/block}

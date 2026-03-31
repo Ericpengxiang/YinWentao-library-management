@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{block name="title"}智慧图书管理系统{/block}</title>
+    <link rel="stylesheet" href="https://unpkg.com/layui@2.9.6/dist/css/layui.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@700&display=swap">
+    <style>
+        :root {
+            --primary: #ff7a1a;
+            --primary-2: #ffb347;
+            --bg: #1a1208;
+            --panel: #221a0c;
+            --text: #f5efe6;
+            --muted: #a89880;
+            --border: rgba(255, 150, 50, 0.12);
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Noto Sans SC', system-ui, sans-serif;
+        }
+        a { color: var(--primary-2); text-decoration: none; }
+        a:hover { opacity: 0.9; }
+
+        .app-wrap { display: flex; min-height: 100vh; }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 238px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, #2a1a0a 0%, #1a1208 100%);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .brand {
+            padding: 20px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ffb347, #ff7a1a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 24px rgba(255, 122, 26, 0.35);
+        }
+        .brand-text {
+            font-family: 'Noto Serif SC', 'Songti SC', serif;
+            font-weight: 700;
+            font-size: 17px;
+            line-height: 1.25;
+            color: #fff4e8;
+        }
+        .brand-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        .menu { flex: 1; padding: 14px 0 20px; overflow-y: auto; }
+        .menu-group-title {
+            padding: 10px 20px 6px;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #7a6a58;
+        }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            color: #e8dcc8;
+            border-left: 3px solid transparent;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .menu-item:hover {
+            background: rgba(255, 122, 26, 0.08);
+        }
+        .menu-item.active {
+            border-left-color: var(--primary);
+            background: linear-gradient(90deg, rgba(255, 122, 26, 0.22), transparent);
+        }
+        .menu-ico { width: 22px; text-align: center; }
+
+        .sidebar-foot {
+            padding: 14px 16px;
+            border-top: 1px solid var(--border);
+        }
+        .sidebar-foot .layui-btn {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        /* 主区域 */
+        .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        .topbar {
+            height: 62px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 22px;
+            background: rgba(26, 18, 8, 0.92);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+        }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .sys-name { font-size: 18px; font-weight: 600; color: #fff4e8; }
+        .tag-admin {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            color: #1a1208;
+            background: linear-gradient(90deg, #ffb347, #ff7a1a);
+            font-weight: 600;
+        }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffb347, #ff7a1a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #1a1208;
+            font-size: 14px;
+        }
+        .admin-name { color: #f0e6d8; font-size: 14px; }
+
+        .content { padding: 22px; flex: 1; }
+
+        /* 卡片 */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: #ffe8d2;
+        }
+
+        /* 统计卡片 */
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        @media (max-width: 1200px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .stat-grid { grid-template-columns: 1fr; } }
+        .stat-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 20px;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 0 rgba(255, 122, 26, 0);
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(255, 122, 26, 0.18);
+        }
+        .stat-label { font-size: 13px; color: var(--muted); }
+        .stat-num { font-size: 28px; font-weight: 700; margin-top: 8px; color: #fff4e8; }
+
+        /* Layui 表格深色覆盖 */
+        .layui-table-view {
+            background: transparent !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .layui-table-header { border-bottom: 1px solid var(--border) !important; }
+        .layui-table thead tr {
+            background: rgba(255, 122, 26, 0.12) !important;
+        }
+        .layui-table th {
+            font-size: 11px !important;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #ffd4a8 !important;
+            font-weight: 600 !important;
+        }
+        .layui-table td, .layui-table th {
+            border-color: rgba(255, 150, 50, 0.1) !important;
+            color: #f0e6d8 !important;
+        }
+        .layui-table tbody tr:hover {
+            background: rgba(255, 122, 26, 0.08) !important;
+        }
+        .layui-table-page {
+            background: transparent !important;
+        }
+        .layui-laypage a, .layui-laypage span {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border: 1px solid var(--border) !important;
+            color: #e8dcc8 !important;
+        }
+        .layui-laypage .layui-laypage-curr .layui-laypage-em {
+            background: linear-gradient(90deg, #ffb347, #ff7a1a) !important;
+        }
+
+        /* 表单 */
+        .layui-form-label { color: #e0d4c4 !important; }
+        .layui-input, .layui-select-title input, .layui-textarea {
+            background: rgba(0, 0, 0, 0.25) !important;
+            border-color: rgba(255, 150, 50, 0.2) !important;
+            color: #f5efe6 !important;
+        }
+        .layui-input:focus, .layui-textarea:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.25) !important;
+        }
+
+        /* 按钮 */
+        .btn-primary {
+            background: linear-gradient(90deg, #ffb347, #ff7a1a) !important;
+            border: none !important;
+            color: #1a1208 !important;
+            font-weight: 600;
+            border-radius: 10px !important;
+        }
+        .btn-danger {
+            background: rgba(220, 60, 60, 0.2) !important;
+            border: 1px solid rgba(220, 60, 60, 0.45) !important;
+            color: #ffb4b4 !important;
+            border-radius: 10px !important;
+        }
+        .btn-success {
+            background: rgba(60, 180, 120, 0.2) !important;
+            border: 1px solid rgba(60, 180, 120, 0.45) !important;
+            color: #b8f0d0 !important;
+            border-radius: 10px !important;
+        }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.06) !important;
+            border: 1px solid var(--border) !important;
+            color: #f0e6d8 !important;
+            border-radius: 10px !important;
+        }
+
+        /* 徽章 */
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-orange { background: rgba(255, 122, 26, 0.25); color: #ffd4a8; }
+        .badge-green { background: rgba(60, 180, 120, 0.25); color: #b8f0d0; }
+        .badge-red { background: rgba(220, 60, 60, 0.3); color: #ffb4b4; }
+        .badge-blue { background: rgba(80, 140, 255, 0.25); color: #c8d8ff; }
+
+        /* 超期闪烁 */
+        @keyframes blink-red {
+            0%, 100% { opacity: 1; box-shadow: 0 0 12px rgba(255, 60, 60, 0.6); }
+            50% { opacity: 0.65; box-shadow: 0 0 4px rgba(255, 60, 60, 0.3); }
+        }
+        .overdue-blink {
+            animation: blink-red 1.1s ease-in-out infinite;
+        }
+
+        /* Tab */
+        .layui-tab-brief > .layui-tab-title .layui-this {
+            color: var(--primary) !important;
+        }
+        .layui-tab-brief > .layui-tab-title .layui-this:after {
+            background: linear-gradient(90deg, #ffb347, #ff7a1a) !important;
+        }
+        .layui-tab-title li { color: #c4b8a8 !important; }
+
+        /* 弹窗深色 */
+        .layui-layer {
+            background: #2a2014 !important;
+            border: 1px solid var(--border) !important;
+            color: #f0e6d8 !important;
+        }
+        .layui-layer-title {
+            background: rgba(255, 122, 26, 0.15) !important;
+            color: #ffe8d2 !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+        .layui-layer-content { color: #e8dcc8 !important; }
+
+        .toolbar { margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .muted { color: var(--muted); font-size: 13px; }
+    </style>
+    {block name="head"}{/block}
+</head>
+<body>
+<div class="app-wrap">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-logo">📚</div>
+            <div>
+                <div class="brand-text">智慧图书</div>
+                <div class="brand-sub">专科学校 · 后台</div>
+            </div>
+        </div>
+        <nav class="menu">
+            <div class="menu-group-title">概览</div>
+            <a class="menu-item {:request()->controller() === 'Index' ? 'active' : ''}" href="/admin/index/index">
+                <span class="menu-ico">📊</span><span>统计首页</span>
+            </a>
+            <div class="menu-group-title">业务</div>
+            <a class="menu-item {:request()->controller() === 'Book' ? 'active' : ''}" href="/admin/book/index">
+                <span class="menu-ico">📖</span><span>图书管理</span>
+            </a>
+            <a class="menu-item {:request()->controller() === 'Reader' ? 'active' : ''}" href="/admin/reader/index">
+                <span class="menu-ico">👤</span><span>读者管理</span>
+            </a>
+            <a class="menu-item {:request()->controller() === 'Borrow' ? 'active' : ''}" href="/admin/borrow/index">
+                <span class="menu-ico">📝</span><span>借阅管理</span>
+            </a>
+        </nav>
+        <div class="sidebar-foot">
+            <a href="/admin/login/logout" class="layui-btn layui-btn-primary" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:#f0e6d8;">退出登录</a>
+        </div>
+    </aside>
+    <div class="main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="sys-name">智慧图书管理系统</span>
+                <span class="tag-admin">后台管理</span>
+            </div>
+            <div class="topbar-right">
+                <span class="admin-name">{:session('admin_name')|default='管理员'|htmlspecialchars}</span>
+                <div class="avatar">{:mb_substr((string)(session('admin_name') ?: '管'), 0, 1, 'UTF-8')}</div>
+            </div>
+        </header>
+        <main class="content">
+            {block name="content"}{/block}
+        </main>
+    </div>
+</div>
+<script src="https://unpkg.com/layui@2.9.6/dist/layui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+{block name="script"}{/block}
+</body>
+</html>

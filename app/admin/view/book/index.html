@@ -1,0 +1,100 @@
+{extend name="layout/base" /}
+{block name="title"}图书管理 - 智慧图书管理系统{/block}
+{block name="content"}
+<div class="card" style="margin-bottom:16px;">
+    <div class="toolbar">
+        <form class="layui-form layui-form-pane" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <div class="layui-form-item" style="margin:0;">
+                <div class="layui-input-inline" style="width:200px;">
+                    <input type="text" name="keyword" id="kw" placeholder="书名 / 作者 / ISBN" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item" style="margin:0;">
+                <div class="layui-input-inline" style="width:160px;">
+                    <select name="category_id" id="cat">
+                        <option value="">全部分类</option>
+                        {volist name="categories" id="c"}
+                        <option value="{$c.id}">{$c.name|htmlspecialchars}</option>
+                        {/volist}
+                    </select>
+                </div>
+            </div>
+            <button type="button" class="layui-btn btn-primary" id="btn-search">搜索</button>
+            <a href="/admin/book/add" class="layui-btn btn-success">添加图书</a>
+        </form>
+    </div>
+    <table id="tbl-book" lay-filter="tbl-book"></table>
+</div>
+
+<script type="text/html" id="bar-book">
+    <a class="layui-btn layui-btn-xs btn-primary" lay-event="edit">编辑</a>
+    <a class="layui-btn layui-btn-xs btn-ghost" lay-event="toggle">{{# if(d.status==1){ }}下架{{# } else { }}上架{{# } }}</a>
+    <a class="layui-btn layui-btn-xs btn-danger" lay-event="del">删除</a>
+</script>
+{/block}
+{block name="script"}
+<script>
+layui.use(['table', 'form', 'layer'], function(){
+    var table = layui.table, form = layui.form, layer = layui.layer, $ = layui.$;
+    form.render();
+
+    var tbl = table.render({
+        elem: '#tbl-book',
+        id: 'tbl-book',
+        url: '/admin/book/listJson',
+        page: true,
+        limit: 10,
+        cols: [[
+            {field:'id', title:'ID', width:70, sort:true},
+            {field:'isbn', title:'ISBN', width:140},
+            {field:'title', title:'书名', minWidth:180},
+            {field:'author', title:'作者', width:100},
+            {field:'category_name', title:'分类', width:90},
+            {field:'total', title:'库存', width:70},
+            {field:'available', title:'可借', width:70},
+            {field:'price', title:'定价', width:80, templet: function(d){ return '¥'+d.price; }},
+            {field:'status', title:'状态', width:90, templet: function(d){
+                return d.status == 1 ? '<span class="badge badge-green">上架</span>' : '<span class="badge badge-red">下架</span>';
+            }},
+            {title:'操作', width:220, align:'center', toolbar:'#bar-book', fixed:'right'}
+        ]],
+        where: { keyword: '', category_id: '' },
+        parseData: function(res){
+            return { code: res.code, msg: res.msg, count: res.count, data: res.data };
+        },
+        response: { statusCode: 0 },
+        skin: 'line'
+    });
+
+    $('#btn-search').on('click', function(){
+        layui.table.reload('tbl-book', {
+            page: { curr: 1 },
+            where: {
+                keyword: $('#kw').val(),
+                category_id: $('#cat').val()
+            }
+        });
+    });
+
+    table.on('tool(tbl-book)', function(obj){
+        var d = obj.data;
+        if(obj.event === 'edit'){
+            window.location.href = '/admin/book/edit?id=' + d.id;
+        } else if(obj.event === 'toggle'){
+            $.post('/admin/book/toggleStatus', {id: d.id}, function(res){
+                if(res.code === 0){ layer.msg('已更新', {icon:1}); layui.table.reload('tbl-book'); }
+                else { layer.msg(res.msg, {icon:2}); }
+            }, 'json');
+        } else if(obj.event === 'del'){
+            layer.confirm('确定删除该图书？', {title:'确认', skin:'layui-layer-molv'}, function(ix){
+                layer.close(ix);
+                $.post('/admin/book/delete', {id: d.id}, function(res){
+                    if(res.code === 0){ layer.msg('已删除', {icon:1}); layui.table.reload('tbl-book'); }
+                    else { layer.msg(res.msg, {icon:2}); }
+                }, 'json');
+            });
+        }
+    });
+});
+</script>
+{/block}

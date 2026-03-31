@@ -1,0 +1,78 @@
+{extend name="layout/base" /}
+{block name="title"}添加读者 - 智慧图书管理系统{/block}
+{block name="content"}
+<div class="card">
+    <div class="card-title">添加读者</div>
+    <p class="muted" style="margin-top:-8px;margin-bottom:18px;">借书证号将在保存时自动生成（R + 7 位数字）。</p>
+    <form class="layui-form" style="max-width:640px;">
+        <div class="layui-form-item">
+            <label class="layui-form-label">姓名</label>
+            <div class="layui-input-block">
+                <input type="text" name="name" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">性别</label>
+            <div class="layui-input-block">
+                <input type="radio" name="gender" value="1" title="男" checked>
+                <input type="radio" name="gender" value="2" title="女">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">手机</label>
+            <div class="layui-input-block">
+                <input type="text" name="phone" required lay-verify="required|phone" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">邮箱</label>
+            <div class="layui-input-block">
+                <input type="text" name="email" class="layui-input" placeholder="可选">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">班级</label>
+            <div class="layui-input-block">
+                <input type="text" name="class_name" required lay-verify="required" class="layui-input">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <label class="layui-form-label">借阅上限</label>
+            <div class="layui-input-inline" style="width:120px;">
+                <input type="number" name="max_borrow" required lay-verify="required|number" class="layui-input" value="5" min="1" max="20">
+            </div>
+        </div>
+        <div class="layui-form-item">
+            <div class="layui-input-block">
+                <button class="layui-btn btn-primary" lay-submit lay-filter="save">保存</button>
+                <a href="/admin/reader/index" class="layui-btn btn-ghost">返回</a>
+            </div>
+        </div>
+    </form>
+</div>
+{/block}
+{block name="script"}
+<script>
+layui.use(['form','layer'], function(){
+    var form = layui.form, layer = layui.layer, $ = layui.$;
+    form.verify({
+        phone: [/^1\d{10}$/, '请输入正确手机号']
+    });
+    form.render();
+    form.on('submit(save)', function(data){
+        var load = layer.load(2);
+        $.post('/admin/reader/saveAdd', data.field, function(res){
+            layer.close(load);
+            if(res.code === 0){
+                layer.alert('添加成功，借书证号：' + (res.data.card_no||''), {title:'完成', icon:1}, function(){
+                    location.href = '/admin/reader/index';
+                });
+            } else {
+                layer.msg(res.msg, {icon:2});
+            }
+        }, 'json');
+        return false;
+    });
+});
+</script>
+{/block}
